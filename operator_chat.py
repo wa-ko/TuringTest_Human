@@ -50,7 +50,7 @@ st.subheader(f"現在のお題: {st.session_state.current_topic}")
 # Firebaseから新しいメッセージを取得
 st.write("新しいメッセージを確認しています...")
 
-ref = db.reference('chats')
+ref = db.reference('chats', app=firebase_admin.get_app('operator_chat_app'))
 
 # メッセージ取得関数
 def get_pending_messages():

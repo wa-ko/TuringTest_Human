@@ -121,7 +121,7 @@ elif st.session_state.page == 'chat':
         st.session_state.messages.append({"role": "user", "content": prompt})
 
         # Firebaseにメッセージを保存
-        ref = db.reference('chats')
+        ref = db.reference('chats', app=firebase_admin.get_app('human_chat_app'))
         payload = {
             'role': 'user',
             'content': prompt,
