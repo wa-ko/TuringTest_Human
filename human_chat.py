@@ -8,6 +8,7 @@ from result import show_result_page
 # セッションステートの初期化
 if "messages" not in st.session_state:
     st.session_state.messages = []
+    st.session_state.turn_count = 0  # 追加: 会話のターン数を初期化
 
 # Firebaseの初期化
 if 'firebase_app' not in st.session_state:
@@ -31,11 +32,11 @@ if 'firebase_app' not in st.session_state:
 
         # Firebaseが初期化済みかどうかを確認
         try:
-            app = firebase_admin.get_app('human_chat_app')  # アプリ名で取得
+            app = firebase_admin.get_app('turing_test_app')  # アプリ名で取得
         except ValueError:
             app = firebase_admin.initialize_app(cred, {
                 'databaseURL': database_url,
-            }, name='human_chat_app')  # アプリ名で初期化
+            }, name='turing_test_app')  # アプリ名で初期化
 
         st.session_state.firebase_app = True
 
@@ -49,11 +50,17 @@ if 'page' not in st.session_state:
 # サイドバーにページ切り替えボタンを追加
 if st.sidebar.button('説明ページへ'):
     st.session_state.page = 'explanation'
+    try:
+        # Firebase データの全削除
+        ref = db.reference('/', app=firebase_admin.get_app('human_chat_app'))
+        ref.delete()  # ルートノードのデータを全削除
+        st.session_state.messages = []  # チャットメッセージの初期化
+    except Exception as e:
+        st.error(f"会話データのリセットに失敗しました: {e}")
+
 if st.sidebar.button('チャットページへ'):
     st.session_state.page = 'chat'
     st.session_state.start_time = time.time()  # Start the timer when moving to chat
-if st.sidebar.button('結果入力ページへ'):
-    st.session_state.page = 'result'
 
 # お題のリストを追加
 TOPICS = [
@@ -65,9 +72,13 @@ TOPICS = [
 # ページの表示
 if st.session_state.page == 'explanation':
     st.title('チューリングテスト - 説明')
-    st.write("ここにチューリングテストの説明を入れてください。")
-    st.write("注意事項やテストの目的などを記載します。")
-    st.write("準備ができたら、サイドバーからチャットページに移動してください。")
+    st.write("このアプリは、チューリングテストを行うためのものです。")
+    st.write("チューリングテストは、会話の相手がコンピュータか人間かを区別できるかどうかを判断するテストです。")
+    st.write("このアプリでチャットを行いその結果を記録します。")
+    st.write("会話はターン制で、連続してメッセージを送ることはせずに、交互にメッセージを送信してください。")
+    st.write("会話は5分間続き、その後に結果を入力するページに移動します。")
+    st.write("途中で会話を終了したい場合は、会話終了ボタンをクリックしてアンケートに進んでください。")
+    st.write("チャットページに移動して、会話を始めてください。")
 
 elif st.session_state.page == 'chat':
     st.title('チューリングテスト')
@@ -77,13 +88,6 @@ elif st.session_state.page == 'chat':
         st.session_state.current_topic = random.choice(TOPICS)
 
     st.subheader(f"お題：{st.session_state.current_topic}")
-
-    # お題を変更するボタン
-    if st.button("お題を変更"):
-        st.session_state.current_topic = random.choice(TOPICS)
-        st.session_state.messages = []  # 会話履歴をクリア
-        st.session_state.start_time = time.time()  # Start the timer
-        st.rerun()
 
     # Add a button to end the conversation
     if st.button("会話終了"):
@@ -97,6 +101,7 @@ elif st.session_state.page == 'chat':
     # Layout for timer and chat messages
     timer_placeholder = st.empty()
     chat_placeholder = st.container()
+
 
     # Countdown timer calculation and display
     elapsed_time = time.time() - st.session_state.start_time
@@ -119,6 +124,7 @@ elif st.session_state.page == 'chat':
         with st.chat_message("user"):
             st.markdown(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.turn_count += 1  # 追加: ターン数をインクリメント
 
         # Firebaseにメッセージを保存
         ref = db.reference('chats', app=firebase_admin.get_app('human_chat_app'))
@@ -141,24 +147,21 @@ elif st.session_state.page == 'chat':
                 while True:
                     message_data = ref.child(new_message_ref.key).get()
                     if message_data and message_data.get('status') == 'responded':
-                        human_response = message_data.get('response')
+                        operator_response = message_data.get('response')
                         break
 
             except Exception as e:
                 st.error(f"An error occurred: {e}")
-                human_response = "An error occurred while fetching the response."
+                operator_response = "An error occurred while fetching the response."
 
             # 応答を表示
-            message_placeholder.markdown(human_response or "No response available.")
-            st.session_state.messages.append({"role": "assistant", "content": human_response or "No response available."})
+            message_placeholder.markdown(operator_response or "No response available.")
+            st.session_state.messages.append({"role": "assistant", "content": operator_response or "No response available."})
 
     if remaining_time == 0:
         st.warning("会話が終了しました。")
         st.session_state.page = 'result'
         st.rerun()
-
-    # # Sleep for a short time to allow the UI to update
-    # time.sleep(1)
 
 elif st.session_state.page == 'result':
     show_result_page()

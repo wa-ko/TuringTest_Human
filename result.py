@@ -53,10 +53,12 @@ def show_result_page():
         st.subheader("提出された評価：")
         st.write(f"判定結果： {st.session_state.evaluation_result['identity']}")
         st.write(f"確信度： {st.session_state.evaluation_result['confidence']}/10")
-        st.write("判断理由：")
-        st.write(st.session_state.evaluation_result['reason'])
+        st.write(f"判断理由：{st.session_state.evaluation_result['reason']}")
+        # 会話のターン数を表示
+        if 'turn_count' in st.session_state:
+            st.write(f"会話のターン数： {st.session_state.turn_count}")
 
-        # Display the time taken for the conversation
+        # 会話にかかった時間を表示
         if 'end_time' in st.session_state and 'start_time' in st.session_state:
             time_taken = st.session_state.end_time - st.session_state.start_time
             minutes, seconds = divmod(int(time_taken), 60)
