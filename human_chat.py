@@ -52,7 +52,7 @@ if st.sidebar.button('説明ページへ'):
     st.session_state.page = 'explanation'
     try:
         # Firebase データの全削除
-        ref = db.reference('/', app=firebase_admin.get_app('human_chat_app'))
+        ref = db.reference('/', app=firebase_admin.get_app('turing_test_app'))
         ref.delete()  # ルートノードのデータを全削除
         st.session_state.messages = []  # チャットメッセージの初期化
     except Exception as e:
@@ -127,7 +127,7 @@ elif st.session_state.page == 'chat':
         st.session_state.turn_count += 1  # 追加: ターン数をインクリメント
 
         # Firebaseにメッセージを保存
-        ref = db.reference('chats', app=firebase_admin.get_app('human_chat_app'))
+        ref = db.reference('chats', app=firebase_admin.get_app('turing_test_app'))
         payload = {
             'role': 'user',
             'content': prompt,
